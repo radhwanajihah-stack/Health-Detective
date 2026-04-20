@@ -1,0 +1,411 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Nutrition Quest: Zoe's Journey</title>
+    <style>
+        :root {
+            --primary: #4CAF50;
+            --secondary: #ff9800;
+            --danger: #f44336;
+            --sky: #87CEEB;
+            --ground: #7cfc00;
+        }
+
+        body {
+            margin: 0;
+            padding: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: #222;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        #game-container {
+            width: 100%;
+            max-width: 800px;
+            height: 500px;
+            background: var(--sky);
+            position: relative;
+            border: 5px solid #fff;
+            border-radius: 15px;
+            box-shadow: 0 10px 30px rgba(0,0,0,0.5);
+            overflow: hidden;
+        }
+
+        /* --- UI Elements --- */
+        #hud {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            right: 10px;
+            display: flex;
+            justify-content: space-between;
+            z-index: 10;
+            font-weight: bold;
+            color: #333;
+            background: rgba(255,255,255,0.7);
+            padding: 5px 15px;
+            border-radius: 20px;
+        }
+
+        #progress-container {
+            position: absolute;
+            top: 50px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 60%;
+            height: 10px;
+            background: #ddd;
+            border-radius: 5px;
+            z-index: 10;
+        }
+
+        #progress-bar {
+            width: 0%;
+            height: 100%;
+            background: var(--primary);
+            border-radius: 5px;
+            transition: width 0.5s;
+        }
+
+        /* --- Game World --- */
+        #world {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            transition: background 1s;
+        }
+
+        #ground {
+            position: absolute;
+            bottom: 0;
+            width: 100%;
+            height: 100px;
+            background: var(--ground);
+        }
+
+        #zoe {
+            position: absolute;
+            bottom: 100px;
+            left: 50px;
+            width: 60px;
+            height: 80px;
+            background: #ff69b4; /* Pink Outfit */
+            border-radius: 10px;
+            transition: left 1s ease-in-out, filter 0.5s;
+            z-index: 5;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: flex-start;
+        }
+        
+        #zoe::after { content: '👧'; font-size: 40px; }
+
+        .obstacle {
+            position: absolute;
+            bottom: 100px;
+            right: 100px;
+            width: 120px;
+            height: 120px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 60px;
+            transition: all 0.5s ease;
+        }
+
+        /* --- Interaction Area --- */
+        #interaction-panel {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 90%;
+            background: white;
+            padding: 15px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 -5px 15px rgba(0,0,0,0.2);
+            z-index: 20;
+        }
+
+        #sentence-display {
+            font-size: 1.2rem;
+            margin-bottom: 15px;
+            font-weight: bold;
+            color: #444;
+            min-height: 2.4em;
+        }
+
+        .btn {
+            padding: 12px 25px;
+            font-size: 1rem;
+            border: none;
+            border-radius: 25px;
+            cursor: pointer;
+            font-weight: bold;
+            transition: transform 0.2s;
+            margin: 5px;
+        }
+
+        .btn:active { transform: scale(0.95); }
+
+        #mic-btn { background: var(--secondary); color: white; }
+        #mic-btn.recording { background: var(--danger); animation: pulse 1s infinite; }
+        #next-btn { background: var(--primary); color: white; display: none; }
+
+        #feedback {
+            margin-top: 10px;
+            font-weight: bold;
+            height: 20px;
+        }
+
+        /* --- Animations --- */
+        @keyframes pulse {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.05); }
+            100% { transform: scale(1); }
+        }
+
+        .glow-effect {
+            box-shadow: 0 0 50px 30px rgba(255, 255, 255, 0.8);
+        }
+
+        .hidden { display: none !important; }
+
+        #final-screen {
+            position: absolute;
+            inset: 0;
+            background: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 100;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+
+<div id="game-container">
+    <div id="hud">
+        <div id="level-indicator">Level: 1 / 4</div>
+        <div id="score-display">Score: 0</div>
+    </div>
+
+    <div id="progress-container">
+        <div id="progress-bar"></div>
+    </div>
+
+    <div id="world">
+        <div id="zoe"></div>
+        <div id="obstacle-sprite" class="obstacle">🥤</div>
+        <div id="ground"></div>
+    </div>
+
+    <div id="interaction-panel">
+        <div id="sentence-display">Get ready Zoe!</div>
+        <div id="feedback"></div>
+        <button id="mic-btn" class="btn">🎤 Push to Talk</button>
+        <button id="next-btn" class="btn">Next Level ➔</button>
+    </div>
+
+    <div id="final-screen" class="hidden">
+        <h1>🎉 Quest Complete!</h1>
+        <p id="final-score-text">Your Final Score: 100</p>
+        <p>Zoe reached the Healthy Cafe!</p>
+        <button class="btn" onclick="location.reload()" style="background: var(--primary); color:white;">Play Again</button>
+    </div>
+</div>
+
+<script>
+    const levels = [
+        {
+            level: 1,
+            title: "The Energy Gate",
+            obstacle: "🥤",
+            sentence: "I choose the Sweet Potato for long-lasting energy!",
+            reward: "Monster shrinks!",
+            bg: "#87CEEB"
+        },
+        {
+            level: 2,
+            title: "The Muscle Bridge",
+            obstacle: "🌉",
+            sentence: "Grilled Salmon builds my strong muscles!",
+            reward: "Bridge appears!",
+            bg: "#90EE90"
+        },
+        {
+            level: 3,
+            title: "The Glow Tunnel",
+            obstacle: "🕳️",
+            sentence: "Avocados have healthy fats for glowing skin!",
+            reward: "Light on!",
+            bg: "#2c3e50"
+        },
+        {
+            level: 4,
+            title: "The Final Boss",
+            obstacle: "🍜",
+            sentence: "I avoid the Salty Trap! I drink water and eat fresh food!",
+            reward: "Salt King Melts!",
+            bg: "#FFD700"
+        }
+    ];
+
+    let currentLevel = 0;
+    let score = 0;
+    let isRecording = false;
+
+    // Elements
+    const zoe = document.getElementById('zoe');
+    const obstacleSprite = document.getElementById('obstacle-sprite');
+    const sentenceDisplay = document.getElementById('sentence-display');
+    const feedback = document.getElementById('feedback');
+    const micBtn = document.getElementById('mic-btn');
+    const nextBtn = document.getElementById('next-btn');
+    const levelInd = document.getElementById('level-indicator');
+    const scoreInd = document.getElementById('score-display');
+    const progressBar = document.getElementById('progress-bar');
+    const world = document.getElementById('world');
+
+    // Speech Recognition Setup
+    const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecognition;
+    const recognition = new SpeechRecognition();
+    recognition.lang = 'en-US';
+    recognition.interimResults = false;
+    recognition.maxAlternatives = 1;
+
+    function initLevel() {
+        const data = levels[currentLevel];
+        levelInd.innerText = `Level: ${currentLevel + 1} / 4`;
+        sentenceDisplay.innerText = data.sentence;
+        obstacleSprite.innerText = data.obstacle;
+        obstacleSprite.style.transform = "scale(1)";
+        obstacleSprite.style.opacity = "1";
+        world.style.background = data.bg;
+        feedback.innerText = "";
+        nextBtn.style.display = "none";
+        micBtn.style.display = "inline-block";
+        
+        // Reset Zoe Position
+        zoe.style.left = "50px";
+        zoe.classList.remove('glow-effect');
+        
+        // Update Progress Bar
+        progressBar.style.width = `${(currentLevel / levels.length) * 100}%`;
+    }
+
+    function calculateSimilarity(str1, str2) {
+        const s1 = str1.toLowerCase().replace(/[^\w\s]/g, '');
+        const s2 = str2.toLowerCase().replace(/[^\w\s]/g, '');
+        const words1 = s1.split(' ');
+        const words2 = s2.split(' ');
+        const matches = words1.filter(word => words2.includes(word));
+        return matches.length / words2.length;
+    }
+
+    micBtn.addEventListener('mousedown', startListening);
+    micBtn.addEventListener('mouseup', stopListening);
+    // Touch support
+    micBtn.addEventListener('touchstart', (e) => { e.preventDefault(); startListening(); });
+    micBtn.addEventListener('touchend', (e) => { e.preventDefault(); stopListening(); });
+
+    function startListening() {
+        if (isRecording) return;
+        isRecording = true;
+        micBtn.innerText = "Listening...";
+        micBtn.classList.add('recording');
+        recognition.start();
+        startTime = Date.now();
+    }
+
+    function stopListening() {
+        if (!isRecording) return;
+        isRecording = false;
+        micBtn.innerText = "🎤 Push to Talk";
+        micBtn.classList.remove('recording');
+        recognition.stop();
+    }
+
+    recognition.onresult = (event) => {
+        const speechResult = event.results[0][0].transcript;
+        const duration = (Date.now() - startTime) / 1000;
+
+        if (duration < 1.5) {
+            feedback.innerText = "Please speak clearly and try again.";
+            feedback.style.color = "orange";
+            return;
+        }
+
+        const target = levels[currentLevel].sentence;
+        const similarity = calculateSimilarity(speechResult, target);
+
+        if (similarity >= 0.75) { // 75-80% tolerance
+            handleSuccess();
+        } else {
+            handleFailure();
+        }
+    };
+
+    function handleSuccess() {
+        score += 25;
+        scoreInd.innerText = `Score: ${score}`;
+        feedback.innerText = "Correct! +25 points";
+        feedback.style.color = "green";
+        micBtn.style.display = "none";
+        nextBtn.style.display = "inline-block";
+
+        // Level Specific Rewards
+        if (currentLevel === 0) { // Soda Monster
+            obstacleSprite.style.transform = "scale(0.2)";
+            zoe.style.left = "400px";
+        } else if (currentLevel === 1) { // Bridge
+            obstacleSprite.innerText = "🌉✅";
+            zoe.style.left = "400px";
+        } else if (currentLevel === 2) { // Tunnel
+            zoe.classList.add('glow-effect');
+            world.style.background = "#5d6d7e";
+        } else if (currentLevel === 3) { // Salt King
+            obstacleSprite.style.opacity = "0";
+            zoe.style.left = "600px";
+        }
+    }
+
+    function handleFailure() {
+        feedback.innerText = "Try again!";
+        feedback.style.color = "red";
+        // Shake animation
+        zoe.style.transform = "translateX(10px)";
+        setTimeout(() => zoe.style.transform = "translateX(0)", 100);
+    }
+
+    nextBtn.addEventListener('click', () => {
+        currentLevel++;
+        if (currentLevel < levels.length) {
+            initLevel();
+        } else {
+            showFinalScreen();
+        }
+    });
+
+    function showFinalScreen() {
+        document.getElementById('final-screen').classList.remove('hidden');
+        document.getElementById('final-score-text').innerText = `Your Final Score: ${score}`;
+        progressBar.style.width = "100%";
+    }
+
+    // Start Game
+    initLevel();
+</script>
+
+</body>
+</html>
